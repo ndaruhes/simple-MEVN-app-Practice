@@ -22,9 +22,17 @@ module.exports = {
 				allowNull: false,
 			},
 			slug: {
-					type: Sequelize.STRING,
-					allowNull: false,
-				},
+				type: Sequelize.STRING,
+				allowNull: false,
+			},
+			user_id: {
+				type: Sequelize.INTEGER,
+				allowNull: false,
+				// references: {
+				// 	model: 'User',
+				// 	key: 'id'
+				// }
+			},
 			created_at: {
 				type: Sequelize.DATE,
 				allowNull: false,

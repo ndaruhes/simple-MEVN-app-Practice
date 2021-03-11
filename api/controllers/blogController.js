@@ -1,9 +1,17 @@
-const {Blog} = require('../models')
+const {Blog, User} = require('../models')
+const path = require('path')
+const sharp = require('sharp')
 module.exports = {
     index: async (req, res) => {
         try{
-            blogs = await Blog.findAll({})
+            blogs = await Blog.findAll({
+                include: {
+                    model: User,
+                    as: 'user'
+                }
+            })
             if(blogs.length > 0){
+                // res.json(blogs)
                 res.json({
                     blogs: blogs.map(blog => {
                         return {
@@ -11,7 +19,12 @@ module.exports = {
                             title: blog.title,
                             content: blog.content,
                             cover: blog.cover,
-                            slug: blog.slug
+                            slug: blog.slug,
+                            user: {
+                                id: blog.user.id,
+                                name: blog.user.name,
+                                email: blog.user.email,
+                            }
                         }
                     }),
                     request: {
@@ -41,10 +54,26 @@ module.exports = {
         let blog
         let id = req.params.id
         try{
-            let blog = await Blog.findOne({where: {id: id}})
+            let blog = await Blog.findOne({
+                where: {id: id},
+                include: {
+                    model: User,
+                    as: 'user'
+                }
+            })
             if(blog != null){
                 res.json({
-                    blog: blog,
+                    blog: {
+                        id: blog.id,
+                        title: blog.title,
+                        content: blog.content,
+                        cover: blog.cover,
+                        slug: blog.slug,
+                        createdAt: blog.createdAt,
+                        user_id: blog.user.id,
+                        user_name: blog.user.id,
+                        user_email: blog.user.email,
+                    },
                     request: {
                         method: req.method,
                         url: process.env.BASE_URL + '/blogs/' + id
@@ -67,10 +96,21 @@ module.exports = {
             title: req.body.title,
             content: req.body.content,
             cover: req.file.filename,
-            slug: createSlug(req.body.title)
+            slug: createSlug(req.body.title),
+            user_id: req.decoded.id
         })
 
         try{
+            // console.log(req.file);
+            // let compressedImagePath = path.join(__dirname, '../public/compressed/', new Date().getTime() + '.jpg')
+            // sharp(req.file.path).resize(640,480).jpeg({
+            //     quality: 80,
+            //     chromeSubsampling: '4:4:4'
+            // }).toFile(compressedImagePath, (err, info) => {
+            //     if(err) res.send({error: err.message, message: 'gagal compress'})
+            //     res.send(info)
+            // })
+
             const newBlog = await blog.save()
             res.status(201).json({
                 data: {
