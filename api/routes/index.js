@@ -23,7 +23,7 @@ router.route('/blogs')
   .get(blogController.index)
   .post(checkAuth, fileUpload.single('cover'), blogController.store)
 
-router.route('/blogs/:id')
+router.route('/blogs/:slug')
   .get(blogController.show)
   .put(checkAuth, blogController.update)
   .delete(checkAuth, blogController.delete)

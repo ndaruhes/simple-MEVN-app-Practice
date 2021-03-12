@@ -1,6 +1,9 @@
 const {Blog, User} = require('../models')
 const path = require('path')
 const sharp = require('sharp')
+const Validator = require('fastest-validator')
+const validatorMessage = require('../config/validatorMessage')
+
 module.exports = {
     index: async (req, res) => {
         try{
@@ -11,7 +14,6 @@ module.exports = {
                 }
             })
             if(blogs.length > 0){
-                // res.json(blogs)
                 res.json({
                     blogs: blogs.map(blog => {
                         return {
@@ -51,11 +53,9 @@ module.exports = {
         }
     },
     show: async (req, res) => {
-        let blog
-        let id = req.params.id
         try{
             let blog = await Blog.findOne({
-                where: {id: id},
+                where: {slug: req.params.slug},
                 include: {
                     model: User,
                     as: 'user'
@@ -71,20 +71,20 @@ module.exports = {
                         slug: blog.slug,
                         createdAt: blog.createdAt,
                         user_id: blog.user.id,
-                        user_name: blog.user.id,
+                        user_name: blog.user.name,
                         user_email: blog.user.email,
                     },
                     request: {
                         method: req.method,
-                        url: process.env.BASE_URL + '/blogs/' + id
+                        url: process.env.BASE_URL + '/blogs/' + req.params.slug
                     },
                     status: true
                 })
             }else{
-                return res.status(404).json({message: 'Cannot find blog', status: false})
+                res.status(404).json({message: 'Cannot find blog', status: false})
             }
         }catch(err){
-            return res.status(500).json({
+            res.status(500).json({
                 error: err.message,
                 message: 'gk tau',
                 status: false
@@ -92,129 +92,120 @@ module.exports = {
         }
     },
     store: async (req, res) => {
-        const blog = new Blog({
+        const blogRequest = {
             title: req.body.title,
             content: req.body.content,
             cover: req.file.filename,
             slug: createSlug(req.body.title),
             user_id: req.decoded.id
-        })
-
-        try{
-            // console.log(req.file);
-            // let compressedImagePath = path.join(__dirname, '../public/compressed/', new Date().getTime() + '.jpg')
-            // sharp(req.file.path).resize(640,480).jpeg({
-            //     quality: 80,
-            //     chromeSubsampling: '4:4:4'
-            // }).toFile(compressedImagePath, (err, info) => {
-            //     if(err) res.send({error: err.message, message: 'gagal compress'})
-            //     res.send(info)
-            // })
-
-            const newBlog = await blog.save()
-            res.status(201).json({
-                data: {
-                    id: newBlog._id,
-                    title: newBlog.title,
-                    slug: newBlog.slug,
-                },
-                message: 'Blog berhasil ditambah',
-                request: {
-                    method: req.method,
-                    url: process.env.BASE_URL + '/blogs'
-                },
-                status: true
-            })
-        }catch(err){
-            res.status(400).json({
-                error: err.message,
-                message: 'Blog gagal ditambah',
-                status: false
-            })
+        }
+        if(blogErrors(blogRequest) == null){
+            try{
+                let blog =  await Blog.create(blogRequest)
+                res.json({
+                    data: {
+                        id: blog.id,
+                        title: blog.title,
+                        slug: blog.slug,
+                    },
+                    message: 'Blog berhasil ditambah',
+                    request: {
+                        method: req.method,
+                        url: process.env.BASE_URL + '/blogs'
+                    },
+                    status: true
+                })
+            }catch(err){
+                res.status(400).json({
+                    error: err.message,
+                    message: 'Blog gagal ditambah',
+                    status: false
+                })
+            }
+        }else{
+            res.send(blogErrors(blogRequest))
         }
     },
     update: async (req, res) => {
-        let id = req.params.id
-        try{
-            const blog = await Blog.findOne({where: {id: id}})
-            blog.update({
-                title: req.body.title,
-                content: req.body.content
-            })
+        const blogRequest = {
+            title: req.body.title,
+            content: req.body.content
+        }
 
-            res.json({
-                data: {
-                    id: blog.id,
-                    title: blog.title,
-                    content: blog.content,
-                },
-                message: 'Blog berhasil diubah',
-                request: {
-                    method: req.method,
-                    url: process.env.BASE_URL + '/blogs/' + id
-                },
-                status: true
-            })
-        }catch(err){
-            res.status(400).json({
-                error: err.message,
-                message: 'Blog gagal diubah',
-                status: false
-            })
+        if(blogErrors(blogRequest) == null){
+            const blog = await Blog.findOne({where: {slug: req.params.slug}})
+            if(blog != null){
+                try{
+                    blog.update(blogRequest)
+                    res.json({
+                        data: {
+                            id: blog.id,
+                            title: blog.title,
+                            content: blog.content,
+                        },
+                        message: 'Blog berhasil diubah',
+                        request: {
+                            method: req.method,
+                            url: process.env.BASE_URL + '/blogs/' + req.params.slug
+                        },
+                        status: true
+                    })
+                }catch(err){
+                    res.status(400).json({
+                        error: err.message,
+                        message: 'Blog gagal diubah',
+                        status: false
+                    })
+                }
+            }else{
+                res.status(404).json({message: 'Cannot find blog', status: false})
+            }
+        }else{
+            res.send(blogErrors(blogRequest))
         }
     },
     delete: async (req, res) => {
-        let id = req.params.id
-        try{
-            const blog = await Blog.findOne({where: {id: id}})
-            blog.destroy()
-
-            res.json({
-                data: {
-                    title: blog.title,
-                },
-                message: 'Blog berhasil dihapus',
-                request: {
-                    method: req.method,
-                    url: process.env.BASE_URL + '/blogs/' + id
-                },
-                status: true
-            })
-        }catch(err){
-            res.status(400).json({
-                error: err.message,
-                message: 'Blog gagal dihapus',
-                status: false
-            })
+        const blog = await Blog.findOne({where: {slug: req.params.slug}})
+        if(blog != null){
+            try{
+                blog.destroy()
+                res.json({
+                    data: {
+                        title: blog.title,
+                    },
+                    message: 'Blog berhasil dihapus',
+                    request: {
+                        method: req.method,
+                        url: process.env.BASE_URL + '/blogs/' + req.params.slug
+                    },
+                    status: true
+                })
+            }catch(err){
+                res.status(400).json({
+                    error: err.message,
+                    message: 'Blog gagal dihapus',
+                    status: false
+                })
+            }
+        }else{
+            res.status(404).json({message: 'Cannot find blog', status: false})
         }
-    },
-    // getBlog: async (req, res, next) => {
-    //     let blog
-    //     let id = req.params.id
-    //     try{
-    //         let blog = await Blog.findOne({where: {id: id}})
-    //         if(blog != null){
-    //             res.json({
-    //                 blog: blog,
-    //                 request: {
-    //                     method: req.method,
-    //                     url: process.env.BASE_URL + '/blogs/' + id
-    //                 },
-    //                 status: true
-    //             })
-    //         }else{
-    //             return res.status(404).json({message: 'Cannot find blog', status: false})
-    //         }
-    //     }catch(err){
-    //         return res.status(500).json({
-    //             error: err.message,
-    //             message: 'gk tau',
-    //             status: false
-    //         })
-    //     }
-    //     res.blog = blog
-    //     next()
-    // }
+    }
+}
+
+function blogErrors(dataRequest){
+    const schema = {
+        title: 'string|empty:false|min:3',
+        content: 'string|empty:false|min:10'
+    }
+    const v = new Validator(validatorMessage)
+    const validationResponse = v.validate(dataRequest, schema)
+    if(validationResponse.length > 0){
+        return {
+            message: "Harap isi form dengan benar",
+            errors: validationResponse
+        }
+    }
 }
 
 function createSlug (string){
