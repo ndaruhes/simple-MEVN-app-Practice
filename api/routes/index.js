@@ -25,7 +25,7 @@ router.route('/blogs')
 
 router.route('/blogs/:slug')
   .get(blogController.show)
-  .put(checkAuth, blogController.update)
+  .put(checkAuth, fileUpload.single('cover'), blogController.update)
   .delete(checkAuth, blogController.delete)
 
 module.exports = router;

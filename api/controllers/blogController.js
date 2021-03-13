@@ -1,8 +1,9 @@
 const {Blog, User} = require('../models')
+const validatorMessage = require('../config/validatorMessage')
+const fs = require('fs')
 const path = require('path')
 const sharp = require('sharp')
 const Validator = require('fastest-validator')
-const validatorMessage = require('../config/validatorMessage')
 
 module.exports = {
     index: async (req, res) => {
@@ -92,14 +93,25 @@ module.exports = {
         }
     },
     store: async (req, res) => {
-        const blogRequest = {
-            title: req.body.title,
-            content: req.body.content,
-            cover: req.file.filename,
-            slug: createSlug(req.body.title),
-            user_id: req.decoded.id
+        let blogRequest
+        if(!req.file){
+            blogRequest = {
+                title: req.body.title,
+                content: req.body.content,
+                slug: createSlug(req.body.title),
+                user_id: req.decoded.id
+            }
+        }else{
+            blogRequest = {
+                title: req.body.title,
+                content: req.body.content,
+                cover: req.file.filename,
+                slug: createSlug(req.body.title),
+                user_id: req.decoded.id
+            } 
         }
-        if(blogErrors(blogRequest) == null){
+
+        if(blogErrors(blogRequest, req.method) == null){
             try{
                 let blog =  await Blog.create(blogRequest)
                 res.json({
@@ -127,13 +139,27 @@ module.exports = {
         }
     },
     update: async (req, res) => {
-        const blogRequest = {
-            title: req.body.title,
-            content: req.body.content
+        const blog = await Blog.findOne({where: {slug: req.params.slug}})
+        const filePath = path.join(__dirname, '../public/images/'+blog.cover)
+        let blogRequest
+
+        if(req.file){
+            if(fs.existsSync(filePath)){
+                fs.unlinkSync(filePath)
+            }
+            blogRequest = {
+                title: req.body.title,
+                content: req.body.content,
+                cover: req.file.filename
+            }
+        }else{
+            blogRequest = {
+                title: req.body.title,
+                content: req.body.content
+            }
         }
 
-        if(blogErrors(blogRequest) == null){
-            const blog = await Blog.findOne({where: {slug: req.params.slug}})
+        if(blogErrors(blogRequest, req.method) == null){
             if(blog != null){
                 try{
                     blog.update(blogRequest)
@@ -166,8 +192,12 @@ module.exports = {
     },
     delete: async (req, res) => {
         const blog = await Blog.findOne({where: {slug: req.params.slug}})
+        const filePath = path.join(__dirname, '../public/images/'+blog.cover)
         if(blog != null){
             try{
+                if(fs.existsSync(filePath)){
+                    fs.unlinkSync(filePath)
+                }
                 blog.destroy()
                 res.json({
                     data: {
@@ -193,11 +223,21 @@ module.exports = {
     }
 }
 
-function blogErrors(dataRequest){
-    const schema = {
-        title: 'string|empty:false|min:3',
-        content: 'string|empty:false|min:10'
+function blogErrors(dataRequest, method){
+    let schema
+    if(method === 'PUT'){
+        schema = {
+            title: 'string|empty:false|min:3',
+            content: 'string|empty:false|min:10'
+        }
+    }else{
+        schema = {
+            title: 'string|empty:false|min:3',
+            content: 'string|empty:false|min:10',
+            cover: 'string|empty:false'
+        }
     }
+
     const v = new Validator(validatorMessage)
     const validationResponse = v.validate(dataRequest, schema)
     if(validationResponse.length > 0){
