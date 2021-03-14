@@ -4,7 +4,6 @@ const fs = require('fs')
 const path = require('path')
 const sharp = require('sharp')
 const Validator = require('fastest-validator')
-const directory = path.join(__dirname, '../public/images/blogs/')
 
 module.exports = {
     index: async (req, res) => {
@@ -94,44 +93,46 @@ module.exports = {
         }
     },
     store: async (req, res) => {
+        let blogRequest
         if(!req.file){
-            res.status(400).json({
-                message: 'Harap isi form dengan benar',
-                errors: [{message: 'Cover wajib diisi'}]
-            })
-        }
-        // Create Folder
-        if(!fs.existsSync(directory)){
-            fs.mkdirSync(directory);
-        }
+            blogRequest = {
+                title: req.body.title,
+                content: req.body.content,
+                slug: createSlug(req.body.title),
+                user_id: req.decoded.id
+            }
+        }else{
+            // Create Folder
+            const folder = req.url.split('/')[1]
+            const directory = path.join(__dirname, '../public/images/'+folder)
+            if(!fs.existsSync(directory)){
+                fs.mkdirSync(directory);
+            }
 
-        // Create Path Upload
-        const getFileName = req.file.originalname.split('.')[0]
-        const unique = new Date().toISOString().replace(/[\/\\:]/g, "_")
-        const extension = req.file.mimetype.split("/").pop()
-        const fileName = getFileName + '-' + unique + '.' + extension
-        const pathResult = directory + '/' + fileName
+            // Create Path Upload
+            const getFileName = req.file.originalname.split('.')[0]
+            const unique = new Date().toISOString().replace(/[\/\\:]/g, "_")
+            const extension = req.file.mimetype.split("/").pop()
+            const fileName = getFileName + '-' + unique + '.' + extension
+            const pathResult = directory + '/' + fileName
 
-        let blogRequest = {
-            title: req.body.title,
-            content: req.body.content,
-            cover: fileName,
-            slug: createSlug(req.body.title),
-            user_id: req.decoded.id
-        }
+            blogRequest = {
+                title: req.body.title,
+                content: req.body.content,
+                cover: fileName,
+                slug: createSlug(req.body.title),
+                user_id: req.decoded.id
+            }
 
-        let checkSlug = await Blog.findOne({where: {slug: blogRequest.slug}})
-        if(checkSlug){
-            blogRequest.slug = createSlug(req.body.title) + '-'+new Date().getTime()
+            sharp(req.file.buffer).resize(640,480).jpeg({
+                quality: 80,
+                chromeSubsampling: '4:4:4'
+            }).toFile(pathResult)
         }
 
         if(blogValidation(blogRequest, req.method) == null){
-            try{         
+            try{              
                 let blog =  await Blog.create(blogRequest)
-                sharp(req.file.buffer).resize(640,480).jpeg({
-                    quality: 80,
-                    chromeSubsampling: '4:4:4'
-                }).toFile(pathResult)
                 res.json({
                     data: {
                         id: blog.id,
@@ -158,8 +159,15 @@ module.exports = {
     },
     update: async (req, res) => {
         const blog = await Blog.findOne({where: {slug: req.params.slug}})
-
+        let blogRequest
+        
         if(req.file){
+            // Check File Exists
+            const directory = path.join(__dirname, '../public/images/blogs/')
+            const existsPath = directory + blog.cover
+            if(fs.existsSync(existsPath)){
+                fs.unlinkSync(existsPath)
+            }
             // Create Path Upload
             const getFileName = req.file.originalname.split('.')[0]
             const unique = new Date().toISOString().replace(/[\/\\:]/g, "_")
@@ -167,87 +175,52 @@ module.exports = {
             const fileName = getFileName + '-' + unique + '.' + extension
             const pathResult = directory + '/' + fileName
 
-            let blogRequest = {
+            blogRequest = {
                 title: req.body.title,
                 content: req.body.content,
                 cover: fileName
             }
 
-            if(blogValidation(blogRequest, req.method) == null){
-                if(blog != null){
-                    try{
-                        // Check File Exists
-                        const existsPath = directory + blog.cover
-                        if(fs.existsSync(existsPath)){
-                            fs.unlinkSync(existsPath)
-                        }
-                        blog.update(blogRequest)
-                        sharp(req.file.buffer).resize(640,480).jpeg({
-                            quality: 80,
-                            chromeSubsampling: '4:4:4'
-                        }).toFile(pathResult)
-                        res.json({
-                            data: {
-                                id: blog.id,
-                                title: blog.title,
-                                content: blog.content,
-                            },
-                            message: 'Blog berhasil diubah',
-                            request: {
-                                method: req.method,
-                                url: process.env.BASE_URL + '/blogs/' + req.params.slug
-                            },
-                            status: true
-                        })
-                    }catch(err){
-                        res.status(400).json({
-                            error: err.message,
-                            message: 'Blog gagal diubah',
-                            status: false
-                        })
-                    }
-                }else{
-                    res.status(404).json({message: 'Cannot find blog', status: false})
-                }
-            }else{
-                res.send(blogValidation(blogRequest, req.method))
-            }
+            sharp(req.file.buffer).resize(640,480).jpeg({
+                quality: 80,
+                chromeSubsampling: '4:4:4'
+            }).toFile(pathResult)
         }else{
-            let blogRequest = {
+            blogRequest = {
                 title: req.body.title,
                 content: req.body.content
             }
+        }
 
-            if(blogValidation(blogRequest, req.method) == null){
-                if(blog != null){
-                    try{
-                        blog.update(blogRequest)
-                        res.json({
-                            data: {
-                                id: blog.id,
-                                title: blog.title,
-                                content: blog.content,
-                            },
-                            message: 'Blog berhasil diubah',
-                            request: {
-                                method: req.method,
-                                url: process.env.BASE_URL + '/blogs/' + req.params.slug
-                            },
-                            status: true
-                        })
-                    }catch(err){
-                        res.status(400).json({
-                            error: err.message,
-                            message: 'Blog gagal diubah',
-                            status: false
-                        })
-                    }
-                }else{
-                    res.status(404).json({message: 'Cannot find blog', status: false})
+        if(blogValidation(blogRequest, req.method) == null){
+            if(blog != null){
+                try{
+                    blog.update(blogRequest)
+                    res.json({
+                        data: {
+                            id: blog.id,
+                            title: blog.title,
+                            content: blog.content,
+                        },
+                        message: 'Blog berhasil diubah',
+                        request: {
+                            method: req.method,
+                            url: process.env.BASE_URL + '/blogs/' + req.params.slug
+                        },
+                        status: true
+                    })
+                }catch(err){
+                    res.status(400).json({
+                        error: err.message,
+                        message: 'Blog gagal diubah',
+                        status: false
+                    })
                 }
             }else{
-                res.send(blogValidation(blogRequest, req.method))
+                res.status(404).json({message: 'Cannot find blog', status: false})
             }
+        }else{
+            res.send(blogValidation(blogRequest, req.method))
         }
     },
     delete: async (req, res) => {
@@ -318,6 +291,5 @@ function createSlug (string){
             .replace(/[^\w\-]+/g, "")
             .replace(/\-\-+/g, "-")
             .replace(/^-+/, "")
-            .replace(/-+$/, "")
-            // +'-'+dateFormat
+            .replace(/-+$/, "")+'-'+dateFormat
 }

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "nodemon ./api/bin/www",
+    "dev": "nodemon ./api/bin/www",
     "migrate:fresh": "cd api && sequelize db:migrate:undo:all && sequelize db:migrate"
   },
   "dependencies": {
