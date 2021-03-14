@@ -102,17 +102,36 @@ module.exports = {
                 user_id: req.decoded.id
             }
         }else{
+            // Create Folder
+            const folder = req.url.split('/')[1]
+            const directory = path.join(__dirname, '../public/images/'+folder)
+            if(!fs.existsSync(directory)){
+                fs.mkdirSync(directory);
+            }
+
+            // Create Path Upload
+            const getFileName = req.file.originalname.split('.')[0]
+            const unique = new Date().toISOString().replace(/[\/\\:]/g, "_")
+            const extension = req.file.mimetype.split("/").pop()
+            const fileName = getFileName + '-' + unique + '.' + extension
+            const pathResult = directory + '/' + fileName
+
             blogRequest = {
                 title: req.body.title,
                 content: req.body.content,
-                cover: req.file.filename,
+                cover: fileName,
                 slug: createSlug(req.body.title),
                 user_id: req.decoded.id
-            } 
+            }
+
+            sharp(req.file.buffer).resize(640,480).jpeg({
+                quality: 80,
+                chromeSubsampling: '4:4:4'
+            }).toFile(pathResult)
         }
 
-        if(blogErrors(blogRequest, req.method) == null){
-            try{
+        if(blogValidation(blogRequest, req.method) == null){
+            try{              
                 let blog =  await Blog.create(blogRequest)
                 res.json({
                     data: {
@@ -135,23 +154,37 @@ module.exports = {
                 })
             }
         }else{
-            res.send(blogErrors(blogRequest))
+            res.send(blogValidation(blogRequest, req.method))
         }
     },
     update: async (req, res) => {
         const blog = await Blog.findOne({where: {slug: req.params.slug}})
-        const filePath = path.join(__dirname, '../public/images/'+blog.cover)
+        const directory = path.join(__dirname, '../public/images/blogs/')
         let blogRequest
-
+        
         if(req.file){
-            if(fs.existsSync(filePath)){
-                fs.unlinkSync(filePath)
+            // Check File Exists
+            const existsPath = directory + blog.cover
+            if(fs.existsSync(existsPath)){
+                fs.unlinkSync(existsPath)
             }
+            // Create Path Upload
+            const getFileName = req.file.originalname.split('.')[0]
+            const unique = new Date().toISOString().replace(/[\/\\:]/g, "_")
+            const extension = req.file.mimetype.split("/").pop()
+            const fileName = getFileName + '-' + unique + '.' + extension
+            const pathResult = directory + '/' + fileName
+
             blogRequest = {
                 title: req.body.title,
                 content: req.body.content,
-                cover: req.file.filename
+                cover: fileName
             }
+
+            sharp(req.file.buffer).resize(640,480).jpeg({
+                quality: 80,
+                chromeSubsampling: '4:4:4'
+            }).toFile(pathResult)
         }else{
             blogRequest = {
                 title: req.body.title,
@@ -159,7 +192,7 @@ module.exports = {
             }
         }
 
-        if(blogErrors(blogRequest, req.method) == null){
+        if(blogValidation(blogRequest, req.method) == null){
             if(blog != null){
                 try{
                     blog.update(blogRequest)
@@ -187,12 +220,12 @@ module.exports = {
                 res.status(404).json({message: 'Cannot find blog', status: false})
             }
         }else{
-            res.send(blogErrors(blogRequest))
+            res.send(blogValidation(blogRequest, req.method))
         }
     },
     delete: async (req, res) => {
         const blog = await Blog.findOne({where: {slug: req.params.slug}})
-        const filePath = path.join(__dirname, '../public/images/'+blog.cover)
+        const filePath = path.join(__dirname, '../public/images/blogs/'+blog.cover)
         if(blog != null){
             try{
                 if(fs.existsSync(filePath)){
@@ -223,9 +256,9 @@ module.exports = {
     }
 }
 
-function blogErrors(dataRequest, method){
+function blogValidation(dataRequest, method){
     let schema
-    if(method === 'PUT'){
+    if(method == 'PUT'){
         schema = {
             title: 'string|empty:false|min:3',
             content: 'string|empty:false|min:10'
