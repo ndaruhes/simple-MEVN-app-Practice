@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "nodemon ./api/bin/www",
-    "migrate:fresh": "cd api && sequelize db:migrate:undo:all && sequelize db:migrate"
+    "dev": "nodemon ./bin/www",
+    "migrate:fresh": "sequelize db:migrate:undo:all && sequelize db:migrate"
   },
   "dependencies": {
     "bcrypt": "^5.0.1",

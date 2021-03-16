@@ -2,8 +2,8 @@ var express = require('express');
 var router = express.Router();
 
 // CALL CONTROLLERS
+const authController = require('../controllers/authController')
 const blogController = require('../controllers/blogController')
-const userController = require('../controllers/userController')
 
 // CALL MIDDLEWARE
 const checkAuth = require('../middleware/checkAuth')
@@ -15,8 +15,8 @@ router.get('/', function(req, res, next) {
 });
 
 // AUTHENTICATION 
-router.post('/login', userController.login)
-router.post('/register', userController.register)
+router.post('/login', authController.login)
+router.post('/register', authController.register)
 
 // BLOGS
 router.route('/blogs')
