@@ -1,7 +1,6 @@
-import { createStore } from 'vuex'
 import axios from 'axios'
 
-export default createStore({
+export default{
     namespaced: true,
     state: {
         blogs: []
@@ -14,7 +13,7 @@ export default createStore({
     actions: {
         async getBlogs({commit}){
             try{
-                let response = await axios.post('http://localhost:3000/api/blogs')
+                let response = await axios.get('blogs')
                 commit('SET_BLOGS', response.data.blogs)
             }catch(err){
                 return err.response
@@ -26,4 +25,4 @@ export default createStore({
             return state.blogs
         }
     }
-})
+}
