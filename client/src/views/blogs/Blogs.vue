@@ -6,7 +6,7 @@
             <div class="col-md-12 shadow rounded">
                 <img :src="apiURL+'images/blogs/'+blog.cover" class="card-img-top" :alt="blog.title">
                 <div class="card-body">
-                    <router-link to="#" class="text-decoration-none text-dark">
+                    <router-link :to="{ name: 'blog.single', params: {slug: blog.slug} }" class="text-decoration-none text-dark">
                         <h5 class="card-title">{{ blog.title }}</h5>
                     </router-link>
                     <p class="card-text">{{ blog.content }}</p>
@@ -28,7 +28,6 @@ export default {
     },
     mounted() {
         this.getBlogs();
-        console.log(process.env.VUE_APP_TITLE);
     },
     components: { Breacrumb },
     computed: {

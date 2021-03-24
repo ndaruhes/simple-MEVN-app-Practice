@@ -4,16 +4,16 @@
         <div class="container">
             <router-view />
         </div>
+        <Footer />
     </div>
 </template>
 
 <script>
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 
 export default {
-    mounted(){
-        console.log(process.env.VUE_APP_ROOT_URL);
-    },
-    components: { Navbar },
+    mounted() {},
+    components: { Navbar, Footer },
 };
 </script>

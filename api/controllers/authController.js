@@ -38,15 +38,15 @@ module.exports = {
         }
     },
     register: async (req, res) => {
-        let user = await User.findOne({where: {email: req.body.email}})
         const userRequest = {
             name: req.body.name,
             email: req.body.email,
             password: req.body.password,
             confirmPassword: req.body.confirmPassword
         }
-
+        
         if(userValidation(userRequest, req.url) == null){
+            let user = await User.findOne({where: {email: req.body.email}})
             if(user){
                 res.json({email: req.body.email, message: 'Alamat email sudah digunakan', status: false})
             }else{
@@ -78,7 +78,7 @@ module.exports = {
                 }
             }
         }else{
-            res.send(userValidation(userRequest, req.url))
+            res.status(400).send(userValidation(userRequest, req.url))
         }
     },
 }
@@ -87,10 +87,10 @@ function userValidation(dataRequest, url){
     let schema
     if(url == '/register'){
         schema = {
-            name: 'string|empty:false|required',
-            email: 'email|empty:false',
+            name: 'string|empty:false|required|min:3',
+            email: 'email|empty:false|min:5',
             password: 'string|empty:false|min:5',
-            confirmPassword: { type: "equal", field: "password" }
+            confirmPassword: { type: "equal", field: "password", min: 5 }
         }
     }else{
         schema = {
@@ -101,10 +101,19 @@ function userValidation(dataRequest, url){
 
     const v = new Validator(validatorMessage)
     const validationResponse = v.validate(dataRequest, schema)
+    let field = {
+        name: [], email: [], password: [], confirmPassword: []
+    }
+    validationResponse.map(e => {
+        if(e.field == 'name') field.name.push(e.message)
+        if(e.field == 'email') field.email.push(e.message)
+        if(e.field == 'password') field.password.push(e.message)
+        if(e.field == 'confirmPassword') field.confirmPassword.push(e.message)
+    })
     if(validationResponse.length > 0){
         return {
             message: "Harap isi form dengan benar",
-            errors: validationResponse
+            errors: field
         }
     }
 }

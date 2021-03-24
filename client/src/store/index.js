@@ -5,28 +5,38 @@ import blog from './modules/blog'
 
 export default createStore({
   state: {
-    blogs: []
+    btnLoading: false,
+    formErrors: {},
+    toastMessage: '',
+    toastStatus: ''
   },
   mutations: {
-    // SET_BLOGS(state, data){
-    //   state.blogs = data
-    // }
-  },
-  actions: {
-    // async getBlogs({commit}){
-    //   try{
-    //       let response = await axios.get('http://localhost:3000/api/blogs')
-    //       // console.log(response.data.blogs)
-    //       commit('SET_BLOGS', response.data.blogs)
-    //   }catch(err){
-    //       return err.response
-    //   }
-    // }
+    SET_BUTTON_LOADING(state, status){
+      state.btnLoading = status
+    },
+    SET_FORM_ERRORS(state, errors){
+      state.formErrors = errors
+    },
+    SET_TOAST_MESSAGE(state, message){
+      state.toastMessage = message
+    },
+    SET_TOAST_STATUS(state, status){
+      state.toastStatus = status
+    }
   },
   getters: {
-    // blogs(state){
-    //   return state.blogs
-    // }
+    btnLoading(state){
+      return state.btnLoading
+    },
+    formErrors(state){
+      return state.formErrors
+    },
+    toastMessage(state){
+      return state.toastMessage
+    },
+    toastStatus(state){
+      return state.toastStatus
+    },
   },
   modules: {
     auth, blog

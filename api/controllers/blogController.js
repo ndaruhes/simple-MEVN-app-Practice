@@ -71,7 +71,7 @@ module.exports = {
                         content: blog.content,
                         cover: blog.cover,
                         slug: blog.slug,
-                        createdAt: blog.createdAt,
+                        created_at: dateFormat(blog.createdAt),
                         user_id: blog.user.id,
                         user_name: blog.user.name,
                         user_email: blog.user.email,
@@ -320,4 +320,11 @@ function createSlug (string){
             .replace(/^-+/, "")
             .replace(/-+$/, "")
             // +'-'+dateFormat
+}
+
+function dateFormat(date) {
+    // return date.toGMTString();
+    // let format = date.pop();
+    // return format; 
+    return date.toDateString();
 }
