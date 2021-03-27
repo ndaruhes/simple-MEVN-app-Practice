@@ -49,21 +49,22 @@ export default {
     },
     methods: {
         register() {
-            this.$store.dispatch("auth/register", this.form).then((res) => {
-                if (res.status === 400) {
-                    this.$toast.show(res.data.message, {
-                        position: "bottom-right",
-                        type: "error",
-                        dismissible: true,
-                    });
-                } else {
-                    this.$toast.show(res.data.message, {
-                        position: "bottom-right",
-                        type: "success",
-                        dismissible: true,
-                    });
-                }
-            });
+            this.$store.dispatch("auth/register", this.form);
+            // .then((res) => {
+            //     if (res.status === 400) {
+            //         this.$toast.show(res.data.message, {
+            //             position: "bottom-right",
+            //             type: "error",
+            //             dismissible: true,
+            //         });
+            //     } else {
+            //         this.$toast.show(res.data.message, {
+            //             position: "bottom-right",
+            //             type: "success",
+            //             dismissible: true,
+            //         });
+            //     }
+            // });
         },
     },
 };
