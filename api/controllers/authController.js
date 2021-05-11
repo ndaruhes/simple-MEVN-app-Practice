@@ -104,12 +104,12 @@ function userValidation(dataRequest, url){
     let field = {
         name: [], email: [], password: [], confirmPassword: []
     }
-    validationResponse.map(e => {
-        if(e.field == 'name') field.name.push(e.message)
-        if(e.field == 'email') field.email.push(e.message)
-        if(e.field == 'password') field.password.push(e.message)
-        if(e.field == 'confirmPassword') field.confirmPassword.push(e.message)
-    })
+    // validationResponse.map(e => {
+    //     if(e.field == 'name') field.name.push(e.message)
+    //     if(e.field == 'email') field.email.push(e.message)
+    //     if(e.field == 'password') field.password.push(e.message)
+    //     if(e.field == 'confirmPassword') field.confirmPassword.push(e.message)
+    // })
     if(validationResponse.length > 0){
         return {
             message: "Harap isi form dengan benar",

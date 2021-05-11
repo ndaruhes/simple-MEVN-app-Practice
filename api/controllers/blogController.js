@@ -2,9 +2,15 @@ const {Blog, User} = require('../models')
 const validatorMessage = require('../config/validatorMessage')
 const fs = require('fs')
 const path = require('path')
-const sharp = require('sharp')
 const Validator = require('fastest-validator')
-const directory = path.join(__dirname, '../public/images/blogs/')
+const blogPath = path.join(__dirname, '../public/images/proposal/')
+const imagemin = require("imagemin");
+const imageminMozjpeg = require('imagemin-mozjpeg');
+const imageminPngquant = require("imagemin-pngquant");
+const imageminGiflossy = require('imagemin-giflossy');
+const imageminSvgo = require('imagemin-svgo');
+const {extendDefaultPlugins} = require('svgo');
+const sharp = require('sharp')
 
 module.exports = {
     index: async (req, res) => {
@@ -100,22 +106,11 @@ module.exports = {
                 errors: [{message: 'Cover wajib diisi'}]
             })
         }
-        // Create Folder
-        if(!fs.existsSync(directory)){
-            fs.mkdirSync(directory);
-        }
-
-        // Create Path Upload
-        const getFileName = req.file.originalname.split('.')[0]
-        const unique = new Date().toISOString().replace(/[\/\\:]/g, "_")
-        const extension = req.file.mimetype.split("/").pop()
-        const fileName = getFileName + '-' + unique + '.' + extension
-        const pathResult = directory + '/' + fileName
 
         let blogRequest = {
             title: req.body.title,
             content: req.body.content,
-            cover: fileName,
+            cover: req.file.filename,
             slug: createSlug(req.body.title),
             user_id: req.decoded.id
         }
@@ -126,12 +121,39 @@ module.exports = {
         }
 
         if(blogValidation(blogRequest, req.method) == null){
-            try{         
+            try{
                 let blog =  await Blog.create(blogRequest)
-                sharp(req.file.buffer).resize(640,480).jpeg({
-                    quality: 80,
-                    chromeSubsampling: '4:4:4'
-                }).toFile(pathResult)
+                let uploadPath = path.join(__dirname, '../public/images/uploads/'+req.file.filename)
+
+                if(!fs.existsSync(blogPath)){
+                    fs.mkdirSync(blogPath);
+                }
+
+                await imagemin(['public/images/uploads/'+req.file.filename], {
+                    destination: blogPath,
+                    plugins: [
+                        imageminMozjpeg({quality: [20]}),
+                        imageminPngquant({quality: [0.6, 0.8]}),
+                        imageminGiflossy({ lossy: 80 }),
+                        imageminSvgo({
+                            plugins: extendDefaultPlugins([
+                                {name: 'removeViewBox', active: false}
+                            ])
+                        }),
+                    ]
+                })
+                .then(() => {
+                    if(fs.existsSync(uploadPath)){
+                        fs.unlinkSync(uploadPath);
+                    }
+                })
+
+                // await sharp(uploadPath).resize(640,480).toFile(blogPath+req.file.filename).then(() => {
+                //     if(fs.existsSync(uploadPath)){
+                //         fs.unlinkSync(uploadPath);
+                //     }
+                // })
+
                 res.json({
                     data: {
                         id: blog.id,
@@ -141,7 +163,7 @@ module.exports = {
                     message: 'Blog berhasil ditambah',
                     request: {
                         method: req.method,
-                        url: process.env.BASE_URL + '/blogs'
+                        url: process.env.BASE_URL + 'blogs'
                     },
                     status: true
                 })
@@ -158,34 +180,43 @@ module.exports = {
     },
     update: async (req, res) => {
         const blog = await Blog.findOne({where: {slug: req.params.slug}})
-
         if(req.file){
-            // Create Path Upload
-            const getFileName = req.file.originalname.split('.')[0]
-            const unique = new Date().toISOString().replace(/[\/\\:]/g, "_")
-            const extension = req.file.mimetype.split("/").pop()
-            const fileName = getFileName + '-' + unique + '.' + extension
-            const pathResult = directory + '/' + fileName
-
             let blogRequest = {
                 title: req.body.title,
                 content: req.body.content,
-                cover: fileName
+                cover: req.file.filename
             }
 
             if(blogValidation(blogRequest, req.method) == null){
                 if(blog != null){
                     try{
                         // Check File Exists
-                        const existsPath = directory + blog.cover
-                        if(fs.existsSync(existsPath)){
-                            fs.unlinkSync(existsPath)
+                        const existsBlogPath = blogPath + blog.cover
+                        if(fs.existsSync(existsBlogPath)){
+                            fs.unlinkSync(existsBlogPath)
                         }
+
                         blog.update(blogRequest)
-                        sharp(req.file.buffer).resize(640,480).jpeg({
-                            quality: 80,
-                            chromeSubsampling: '4:4:4'
-                        }).toFile(pathResult)
+
+                        const uploadPath = 'public/images/uploads/'+req.file.filename
+                        await imagemin([uploadPath], {
+                            destination: blogPath,
+                            plugins: [
+                                imageminMozjpeg({quality: [20]}),
+                                imageminPngquant({quality: [0.6, 0.8]}),
+                                imageminGiflossy({ lossy: 80 }),
+                                imageminSvgo({
+                                    plugins: extendDefaultPlugins([
+                                        {name: 'removeViewBox', active: false}
+                                    ])
+                                }),
+                            ]
+                        });
+
+                        if(fs.existsSync(uploadPath)){
+                            fs.unlinkSync(uploadPath);
+                        }
+
                         res.json({
                             data: {
                                 id: blog.id,
@@ -252,11 +283,11 @@ module.exports = {
     },
     delete: async (req, res) => {
         const blog = await Blog.findOne({where: {slug: req.params.slug}})
-        const filePath = path.join(__dirname, '../public/images/blogs/'+blog.cover)
+        const existsBlogPath = blogPath + blog.cover
         if(blog != null){
             try{
-                if(fs.existsSync(filePath)){
-                    fs.unlinkSync(filePath)
+                if(fs.existsSync(existsBlogPath)){
+                    fs.unlinkSync(existsBlogPath)
                 }
                 blog.destroy()
                 res.json({
@@ -266,7 +297,7 @@ module.exports = {
                     message: 'Blog berhasil dihapus',
                     request: {
                         method: req.method,
-                        url: process.env.BASE_URL + '/blogs/' + req.params.slug
+                        url: process.env.BASE_URL + 'blogs/' + req.params.slug
                     },
                     status: true
                 })
